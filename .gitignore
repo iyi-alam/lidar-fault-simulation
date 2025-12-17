@@ -36,6 +36,8 @@ LiDAR_snow_sim/lib
 LiDAR_snow_sim/snow-sim-env
 LiDAR_snow_sim/splits
 LiDAR_snow_sim/snowflakes
+LiDAR_snow_sim/.gitignore
+LiDAR_snow_sim/.gitmodules
 
 #ignore extensions
 *.png

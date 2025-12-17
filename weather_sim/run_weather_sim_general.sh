@@ -8,10 +8,10 @@
 DATA_ROOT="/home/saksham/samsad/mtech-project/datasets/nuscenes"
 
 # Input directory = nuScenes sweeps for LIDAR_TOP
-INPUT_DIR="${DATA_ROOT}/samples/LIDAR_TOP"
+INPUT_DIR="${DATA_ROOT}/sweeps/LIDAR_TOP"
 
 # Output directory (will contain fog/, snow/, rain/, dust/)
-OUTPUT_BASE="${DATA_ROOT}-weather/samples/"
+OUTPUT_BASE="${DATA_ROOT}-weather/sweeps/"
 
 # Plot directory
 PLOT_SAVE_PATH="${DATA_ROOT}/plots"
