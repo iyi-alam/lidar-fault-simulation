@@ -1,0 +1,50 @@
+# exclude the following folder
+__pycache__/
+general/
+generative-methods/
+LISA/
+LISA_new/
+fog_sim_v2.py
+lidar_fault_sim.py
+LiDAR_snow_sim.zip
+utils.py
+
+# Ignore folders in LiDAR dust sim
+LiDAR_dust_sim/__pycache__
+LiDAR_dust_sim/fog_sim_method/integral_lookup_tables
+LiDAR_dust_sim/Outputs
+LiDAR_dust_sim/particles
+
+# Ignore folders in LiDAR fog sim
+LiDAR_fog_sim/.github
+LiDAR_fog_sim/file_lists
+LiDAR_fog_sim/SeeingThroughFog
+LiDAR_fog_sim/integral_lookup_tables
+
+# Ignore folders in Noise Corruption
+# No such folder
+
+# Ignore folders in object fail
+# No such folders
+
+# Ignore folders in rain sim 
+# No such folders
+
+# Ignore folders in snow sim
+LiDAR_snow_sim/.github
+LiDAR_snow_sim/lib
+LiDAR_snow_sim/snow-sim-env
+LiDAR_snow_sim/splits
+LiDAR_snow_sim/snowflakes
+
+#ignore extensions
+*.png
+*.bin
+*.zip
+
+
+weather_sim/outputs
+weather_sim/outputs_old
+fault-sim-papers
+
+
