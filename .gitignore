@@ -2,7 +2,6 @@
 __pycache__/
 general/
 generative-methods/
-LISA/
 LISA_new/
 fog_sim_v2.py
 lidar_fault_sim.py
@@ -38,6 +37,11 @@ LiDAR_snow_sim/splits
 LiDAR_snow_sim/snowflakes
 LiDAR_snow_sim/.gitignore
 LiDAR_snow_sim/.gitmodules
+
+LISA/README.md
+LISA/LICENSE.md
+LISA/environment.yml
+LISA/.gitignore
 
 #ignore extensions
 *.png
