@@ -10,7 +10,6 @@ utils.py
 
 # Ignore folders in LiDAR dust sim
 LiDAR_dust_sim/__pycache__
-LiDAR_dust_sim/fog_sim_method/integral_lookup_tables
 LiDAR_dust_sim/Outputs
 LiDAR_dust_sim/particles
 
@@ -18,7 +17,6 @@ LiDAR_dust_sim/particles
 LiDAR_fog_sim/.github
 LiDAR_fog_sim/file_lists
 LiDAR_fog_sim/SeeingThroughFog
-LiDAR_fog_sim/integral_lookup_tables
 
 # Ignore folders in Noise Corruption
 # No such folder
