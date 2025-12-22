@@ -52,5 +52,6 @@ LISA/.gitignore
 weather_sim/outputs
 weather_sim/outputs_old
 fault-sim-papers
+condaenv.p1hn170a.requirements.txt
 
 
