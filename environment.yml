@@ -3,12 +3,12 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10
+  - numpy=1.26.4
+  - scipy
+  - matplotlib=3.7
+  - scikit-learn
   - tqdm
   - shapely
-  - numpy
-  - scipy
-  - matplotlib
-  - scikit-learn
   - pip
   - pip:
       - nuscenes-devkit==1.1.10
