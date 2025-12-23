@@ -71,11 +71,11 @@ class FogSim:
             foggified_pc[:,3] /= 255.0
         
         assert (foggified_pc.shape[1] == GLOBAL_RESIZE_N)
-        #if self.save:
-        out_path = os.path.join(self.output_dir, file_name)
-        foggified_pc.astype('float32').tofile(out_path)
-        if not os.path.exists(out_path):
-            raise RuntimeError("Error saving file at location: ", out_path)
+        if self.save:
+            out_path = os.path.join(self.output_dir, file_name)
+            foggified_pc.astype('float32').tofile(out_path)
+            if not os.path.exists(out_path):
+                raise RuntimeError("Error saving file at location: ", out_path)
         # return pc, foggified_pc, file_name
 
     def simulate(self, show_pbar, max_sample = None):
