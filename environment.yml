@@ -1,9 +1,10 @@
-name: nuscenes-env
+name: lidar-fault-sim
 channels:
   - conda-forge
 dependencies:
   - python=3.10
   - numpy=1.26.4
+  - pandas=1.3.5
   - scipy
   - matplotlib=3.7
   - scikit-learn

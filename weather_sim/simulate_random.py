@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from functools import partial
 from multiprocessing import Pool, cpu_count
@@ -26,17 +27,33 @@ GLOBAL_RESIZE_N = config_params.PC_FEATURE_DIMS #Some datasets can be resized wi
 MAX_INTENSITY_VAL = config_params.MAX_INTENSITY_VAL
 ALPHA_LIST = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1]
 
+def get_filenames(samples_csv, sweeps_csv):
+
+    samples_df = pd.read_csv(samples_csv)
+    sweeps_df = pd.read_csv(sweeps_csv)
+
+    sample_files = set(samples_df['filenames'].tolist())
+    sweeps_files = set(sweeps_df['filenames'].tolist())
+
+    return sample_files, sweeps_files
+
 
 class FogSim:
     
     def __init__(self, nusc_root, output_dir, 
                  paramset: fogsim.ParameterSet,
-                 simulation_options, save = True):
+                 simulation_options, 
+                 version, sample_files, sweeps_files,  max_scenes = 85,
+                 save = True):
         self.nusc_root = nusc_root 
         self.output_dir = output_dir
         self.pset = paramset
         self.simulation_options = simulation_options
         self.save = save
+        self.version = version
+        self.sample_files = sample_files
+        self.sweeps_files = sweeps_files
+        self.max_scenes = max_scenes
         self.samples_dict = {}
 
     def _process_file(self, file_name_alphas, pset: fogsim.ParameterSet, fog_params):
@@ -61,11 +78,11 @@ class FogSim:
             raise RuntimeError("Error saving file at location: ", out_path)
         # return pc, foggified_pc, file_name
 
-    def simulate(self, show_pbar, max_samples):
+    def simulate(self, show_pbar, max_sample = None):
         filename_alphas = []
-        nusc = NuScenes(version = 'v1.0-mini', dataroot=self.nusc_root, verbose=False)
+        nusc = NuScenes(version = self.version, dataroot=self.nusc_root, verbose=False)
         tokens = set()
-        for scene_index, scene in enumerate(nusc.scene):
+        for scene_index, scene in enumerate(nusc.scene[:self.max_scenes]):
             first_sample_token = scene['first_sample_token']
             sample_token = first_sample_token
             alpha = np.random.choice(ALPHA_LIST)
@@ -81,9 +98,9 @@ class FogSim:
                 while sd_token:
                     sd = nusc.get('sample_data', sd_token)
                     filename = sd['filename']
-                    full_path = os.path.join(self.nusc_root, filename)
+                    lookup_files = self.sample_files if is_a_sample else self.sweeps_files
 
-                    if os.path.exists(full_path) and sd_token not in tokens:
+                    if (filename.split("/")[-1] in lookup_files) and (sd_token not in tokens):
                         tokens.add(sd_token)
                         filename_alphas.append((filename, alpha))
                         self.samples_dict[filename] = is_a_sample
@@ -94,8 +111,11 @@ class FogSim:
                 sample_token = sample['next']
         
         print("Total samples and sweeps to process: ", len(tokens))
+        # raise RuntimeError("Debug Step")
         # Partial function with fixed pset and fog_params
         process_fn = partial(self._process_file, pset=self.pset, fog_params=self.simulation_options)
+        if max_sample is not None and max_sample < len(filename_alphas):
+            filename_alphas = filename_alphas[:max_sample]
 
         with Pool(cpu_count()) as pool:
             if show_pbar:
@@ -153,6 +173,8 @@ if __name__ == "__main__":
     if args.fault == "fog" or args.fault == "all":
         args.output_dir = os.path.join(args.output_dir, f"{args.fault}_random")
         os.makedirs(args.output_dir, exist_ok=True)
+        os.makedirs(os.path.join(args.output_dir, 'samples/LIDAR_TOP'), exist_ok=True)
+        os.makedirs(os.path.join(args.output_dir, 'sweeps/LIDAR_TOP'), exist_ok=True)
         fog_params = {
             "alpha": args.fog_alpha,
             "gamma": args.fog_gamma,
@@ -165,4 +187,23 @@ if __name__ == "__main__":
             ),
 
         }
-        fog_results = simulate_fog(args, fog_params = fog_params, max_samples=None, save=args.save, show_pbar=True)
+        sample_files, sweeps_files = get_filenames(
+            samples_csv = "/home/saksham/samsad/mtech-project/datasets/nuscenes-trainval/nuscenes/file_list_samples.csv",
+            sweeps_csv = "/home/saksham/samsad/mtech-project/datasets/nuscenes-trainval/nuscenes/file_list_sweeps.csv"
+        )
+
+        parameter_set = fogsim.ParameterSet(alpha= fog_params["alpha"], gamma=fog_params["gamma"])
+        simulator = FogSim(nusc_root= args.nusc_root,
+                        output_dir= args.output_dir,
+                        paramset= parameter_set,
+                        simulation_options=fog_params["simulation_options"],
+                        save = args.save,
+                        version='v1.0-trainval',
+                        sample_files=sample_files,
+                        sweeps_files=sweeps_files,
+                        max_scenes=85
+                        )
+
+        simulator.simulate(show_pbar=True, max_sample = 10)
+
+        
