@@ -36,6 +36,8 @@ import tools.snowfall.geometry as g
 PI = np.pi
 DEBUG = False
 EPSILON = np.finfo(float).eps
+ALPHA = 0.0   # Hard code it for the time being, in 1/m
+P0_min = 0.9 * (80.0**-2)   # Minimum detectable power for HDL-64E S3 at max range of 75m
 
 
 
@@ -143,6 +145,7 @@ def process_single_channel(root_path: str, particle_file_prefix: str, orig_pc: n
         if len(beam_dict.keys()) > 1:                           # otherwise there is no snowflake in the current beam
 
             i = np.zeros(M_extended)
+            p = np.zeros(M_extended)
 
             for key, tuple_value in beam_dict.items():
 
@@ -157,13 +160,23 @@ def process_single_channel(root_path: str, particle_file_prefix: str, orig_pc: n
 
                 for k in range(start_index, end_index):
                     i[k] += received_power(CA_P0, beta_0, ratio, R[k], r_j, tau_h)
+                    # Attenuate intensity using alpha
+                    i[k] = i[k] * np.exp(-2 * ALPHA * R[k])
+                    p[k] = i[k] / (R[k]**2 + EPSILON)
 
             max_index = np.argmax(i)
             i_max = i[max_index]
+            p_max = p[max_index]
             d_max = (max_index / intervals_per_meter) - (c * tau_h / 2)
 
             i_max += max_intensity * focal_slope * np.abs(focal_offset - (1 - d_max/120)**2)
             i_max = np.clip(i_max, min_intensity, max_intensity)
+
+            if p_max < P0_min * (d_max ** 2) / d_orig ** 2:  # point is no longer detectable
+
+                pc[j, :] = np.array([0.0, 0.0, 0.0, 0.0, 3])  # Point removed due to snow
+
+                continue
 
             if abs(d_max - d_orig) < 2 * (1 / intervals_per_meter):  # only alter intensity
 

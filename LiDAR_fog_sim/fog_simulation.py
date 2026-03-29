@@ -223,7 +223,7 @@ def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray,
 
             num_fog_responses += 1
 
-            scaling_factor = fog_distance / r_0
+            scaling_factor = fog_distance  / r_0
 
             augmented_pc[i, 0] = pc[i, 0] * scaling_factor
             augmented_pc[i, 1] = pc[i, 1] * scaling_factor
@@ -293,11 +293,11 @@ def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray,
                  'max_fog_response': max_fog_response,
                  'num_fog_responses': num_fog_responses}
 
-    return augmented_pc, simulated_fog_pc, info_dict
+    return augmented_pc, simulated_fog_pc, fog_mask, info_dict
 
 
 def simulate_fog(p: ParameterSet, pc: np.ndarray, noise: int, gain: bool = False, noise_variant: str = 'v1',
-                 hard: bool = True, soft: bool = True) -> Tuple[np.ndarray, np.ndarray, Dict]:
+                 hard: bool = True, soft: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
 
     augmented_pc = copy.deepcopy(pc)
     original_intensity = copy.deepcopy(pc[:, 3])
@@ -308,10 +308,10 @@ def simulate_fog(p: ParameterSet, pc: np.ndarray, noise: int, gain: bool = False
     if hard:
         augmented_pc = P_R_fog_hard(p, augmented_pc)
     if soft:
-        augmented_pc, simulated_fog_pc, info_dict = P_R_fog_soft(p, augmented_pc, original_intensity, noise, gain,
+        augmented_pc, simulated_fog_pc, fog_mask, info_dict = P_R_fog_soft(p, augmented_pc, original_intensity, noise, gain,
                                                                  noise_variant)
 
-    return augmented_pc, simulated_fog_pc, info_dict
+    return augmented_pc, simulated_fog_pc, fog_mask, info_dict
 
 
 if __name__ == '__main__':
@@ -354,7 +354,7 @@ if __name__ == '__main__':
                 points = np.fromfile(all_paths[i], dtype=np.float32)
                 points = points.reshape((-1, args.n_features))
 
-                points, _, _ = simulate_fog(parameter_set, points, 10)
+                points, _, _, _ = simulate_fog(parameter_set, points, 10)
 
                 lidar_save_path = os.path.join(dst_folder, all_files[i])
                 points.astype(np.float32).tofile(lidar_save_path)

@@ -68,9 +68,7 @@ def simulate_object_drop_fault(nuscenes_root, save_path=None, drop_prob=0.5, ver
 
 
 if __name__ == '__main__':
-    root_path = os.path.dirname(os.path.abspath(__file__))
-    root_path = os.path.join(root_path, '../../datasets/nuscenes')
-    print(os.listdir(root_path))
+    root_path = '/home/saksham/samsad/mtech-project/datasets/nuscenes-mini'
     save_path = '/home/saksham/samsad/mtech-project/datasets/nuscenes_obj_fail/samples/LIDAR_TOP'
-    drop_prob = 0.5
+    drop_prob = 1.0
     simulate_object_drop_fault(nuscenes_root= root_path, save_path= save_path, drop_prob= drop_prob, verbose= False)

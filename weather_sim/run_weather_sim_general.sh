@@ -5,31 +5,31 @@
 ###############################################
 
 # NuScenes data root
-DATA_ROOT="/home/saksham/samsad/mtech-project/datasets/nuscenes"
+DATA_ROOT="/home/saksham/samsad/mtech-project/datasets/nuscenes-mini/"
 
 # Input directory = nuScenes sweeps for LIDAR_TOP
-INPUT_DIR="${DATA_ROOT}/sweeps/LIDAR_TOP"
+INPUT_DIR="${DATA_ROOT}/samples/LIDAR_TOP"
 
 # Output directory (will contain fog/, snow/, rain/, dust/)
-OUTPUT_BASE="${DATA_ROOT}-weather/sweeps/"
+OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nusc-mini-corrupted/fog/fog_0.04_new/samples/LIDAR_TOP"
 
-# Plot directory
-PLOT_SAVE_PATH="${DATA_ROOT}/plots"
-mkdir -p "$PLOT_SAVE_PATH"
+# # Plot directory
+# PLOT_SAVE_PATH="${DATA_ROOT}/plots"
+# mkdir -p "$PLOT_SAVE_PATH"
 
 ###############################################
 # FAULT LEVELS TO SWEEP
 ###############################################
 
 # Sweep ranges
-FOG_ALPHAS=(0.01 0.02 0.04 0.06 0.08 0.1)   # 0.04 SKIPPED
+FOG_ALPHAS=(0.04)   # 0.04 SKIPPED
 FOG_GAMMA=1e-6
 
-RAIN_RATES=(5.0 10.0 20.0 30.0 40.0 50.0 60.0 70.0 80.0 90.0 100.0)          # 50.0 SKIPPED
+RAIN_RATES=(5.0 15.0 50.0)          # 50.0 SKIPPED
 #RAIN_RATES=(30.0)   
 
-SNOW_RATES=(0.5 1.0 1.5 2.0 2.5)      # 1.5 SKIPPED
-TERMINAL_VELOCITY=2.0              # Always same
+SNOW_RATES=(1.5)      # 1.5 SKIPPED
+TERMINAL_VELOCITY=(1.0 1.0 1.6 2.0 2.0)              # Always same
 
 DUST_LEVELS=("light" "heavy")      # "moderate" SKIPPED
 
@@ -54,7 +54,6 @@ simulate_fog () {
             --fault "fog" \
             --input_dir "$INPUT_DIR" \
             --output_dir "$OUTPUT_DIR" \
-            --plot_save_path "$PLOT_SAVE_PATH" \
             --fog_alpha "$FOG_ALPHA" \
             --fog_gamma "$FOG_GAMMA" \
             --rain_rate 0 \
@@ -75,7 +74,7 @@ simulate_rain () {
             --fault "rain" \
             --input_dir "$INPUT_DIR" \
             --output_dir "$OUTPUT_DIR" \
-            --plot_save_path "$PLOT_SAVE_PATH" \
+            #--plot_save_path "$PLOT_SAVE_PATH" \
             --fog_alpha 0 \
             --fog_gamma "$FOG_GAMMA" \
             --rain_rate "$RAIN_RATE" \
@@ -89,9 +88,12 @@ simulate_rain () {
 simulate_snow () {
     local LISA_SNOW="$1"   # true / false
 
-    for SNOW_RATE in "${SNOW_RATES[@]}"; do
-        echo ">>> Simulating SNOW with rate=${SNOW_RATE}"
+    for SNOW_RATE_INDEX in "${!SNOW_RATES[@]}"; do
+        SNOW_RATE="${SNOW_RATES[$SNOW_RATE_INDEX]}"
+        CURRENT_TERMINAL_VELOCITY="${TERMINAL_VELOCITY[$SNOW_RATE_INDEX]}"
 
+        echo ">>> Simulating SNOW with rate=${SNOW_RATE} and vt=${CURRENT_TERMINAL_VELOCITY}"
+    
         OUTPUT_DIR="${OUTPUT_BASE}"
         mkdir -p "$OUTPUT_DIR"
 
@@ -100,12 +102,12 @@ simulate_snow () {
             --fault "snow"
             --input_dir "$INPUT_DIR"
             --output_dir "$OUTPUT_DIR"
-            --plot_save_path "$PLOT_SAVE_PATH"
+            #--plot_save_path "$PLOT_SAVE_PATH"
             --fog_alpha 0
             --fog_gamma "$FOG_GAMMA"
             --rain_rate 0
             --snow_rate "$SNOW_RATE"
-            --terminal_velocity "$TERMINAL_VELOCITY"
+            --terminal_velocity "$CURRENT_TERMINAL_VELOCITY"
             --dust_level "none"
             --save
         )
@@ -130,7 +132,7 @@ simulate_dust () {
             --fault "dust" \
             --input_dir "$INPUT_DIR" \
             --output_dir "$OUTPUT_DIR" \
-            --plot_save_path "$PLOT_SAVE_PATH" \
+            #--plot_save_path "$PLOT_SAVE_PATH" \
             --fog_alpha 0 \
             --fog_gamma "$FOG_GAMMA" \
             --rain_rate 0 \
@@ -142,17 +144,14 @@ simulate_dust () {
 }
 
 
-###############################################
-# RUN ALL SIMULATIONS
-###############################################
-
+# Run all simulations
 echo "=============================="
 echo " Running ALL weather faults..."
 echo "=============================="
 
 #simulate_fog
 #simulate_rain
-simulate_snow true
+simulate_snow false   # Run without LISA snow first
 # simulate_dust
 
 echo "======================================="

@@ -94,7 +94,7 @@ def simulate_object_drop_fault(nuscenes_root, save_path=None, drop_prob=0.5, ver
             #print(out_file)
             filtered_points.tofile(out_file)
             
-def simulate_object_transform(nuscenes_root, simulator: Transform, save_path=None, num_samples = 10):
+def simulate_object_transform(nuscenes_root, simulator: Transform, save_path=None, num_samples = 5):
     nusc = NuScenes(version='v1.0-mini', dataroot=nuscenes_root, verbose=False)
     #breakpoint()
     indices = list(range(len(nusc.sample)))
@@ -181,8 +181,8 @@ def simulate_object_transform(nuscenes_root, simulator: Transform, save_path=Non
     return results
 
 
-def plot_with_anns(pc1, pc2, xlim = 25, ylim = 25, 
-             save = False, save_dir = "", save_name = "modified_point_cloud.png",
+def plot_with_anns(pc1, pc2, xlim = 75, ylim = 75, 
+             save = False, save_dir = "", save_name = "boxtransf_point_cloud.png",
              show_error = True, custom_title = None,
              box_corners = None):
     
@@ -190,61 +190,67 @@ def plot_with_anns(pc1, pc2, xlim = 25, ylim = 25,
     x2, y2, i2 = pc2[:,0], pc2[:,1], pc2[:,3]
     orig_box, trf_box = box_corners
 
-    if pc1.shape == pc2.shape:
-        # Compute MSE between intensities
-        mse_pos = np.sqrt(np.linalg.norm(x1-x2)**2 + np.linalg.norm(y1-y2)**2)
-        mse_i = np.linalg.norm(i1-i2)
-    else:
-        print(f"MSE computation not possible due to size mismatch, Size of pc1: {pc1.shape} and Size of pc2: {pc2.shape}")
+    # if pc1.shape == pc2.shape:
+    #     # Compute MSE between intensities
+    #     mse_pos = np.sqrt(np.linalg.norm(x1-x2)**2 + np.linalg.norm(y1-y2)**2)
+    #     mse_i = np.linalg.norm(i1-i2)
+    # else:
+    #     print(f"MSE computation not possible due to size mismatch, Size of pc1: {pc1.shape} and Size of pc2: {pc2.shape}")
         
 
-    fig, ax = plt.subplots(1,2, figsize = (16,6))
+    fig, ax = plt.subplots(1,2, figsize = (36,18))
 
-    sc1 = ax[0].scatter(x1, y1, c = i1, cmap='viridis', s=0.1)
-    ax[0].set_title("Original point cloud")
-    ax[0].set_xlabel("X[m]")
-    ax[0].set_ylabel("Y[m]")
+    sc1 = ax[0].scatter(x1, y1, c = 'gray', s=1.0)
+    #ax[0].set_title("Original point cloud")
+    ax[0].set_xlabel("X[meter]", fontsize = 36)
+    ax[0].set_ylabel("Y[meter]", fontsize = 36)
+    ax[0].set_xticks(ticks = np.linspace(-xlim, xlim, 6))
+    ax[0].set_yticks(ticks = np.linspace(-ylim, ylim, 6))
+    ax[0].tick_params(axis='both', labelsize=30)
     ax[0].axis('equal')
     ax[0].set_xlim(-xlim, xlim)
     ax[0].set_ylim(-ylim, ylim)
 
     if orig_box is not None:
         for box in orig_box:
-            ax[0].plot(box[:, 0], box[:, 1], 'r-', linewidth = 0.5)  # Red box outline
+            ax[0].plot(box[:, 0], box[:, 1], 'r-', linewidth = 2.0)  # Red box outline
 
-    cbar1 = fig.colorbar(sc1, ax=ax[0], shrink=0.8)
-    cbar1.set_label("Intensity")
+    # cbar1 = fig.colorbar(sc1, ax=ax[0], shrink=0.8)
+    # cbar1.set_label("Intensity")
 
-    sc2 = ax[1].scatter(x2, y2, c = i2, cmap='viridis', s=0.1)
+    sc2 = ax[1].scatter(x2, y2, c = 'gray', s=1.0)
     if custom_title is None:
         custom_title = "Modified point cloud"
 
-    if show_error:
-        ax[1].set_title(f"{custom_title}\npos_mse = {mse_pos:.4f} | i_mse = {mse_i:.4f}")
-    else:
-        ax[1].set_title(custom_title)
+    # if show_error:
+    #     ax[1].set_title(f"{custom_title}\npos_mse = {mse_pos:.4f} | i_mse = {mse_i:.4f}")
+    # else:
+    #     ax[1].set_title(custom_title)
 
-    ax[1].set_xlabel("X[m]")
-    ax[1].set_ylabel("Y[m]")
+    ax[1].set_xlabel("X[meter]", fontsize = 36)
+    ax[1].set_ylabel("Y[meter]", fontsize = 36)
+    ax[1].set_xticks(ticks = np.linspace(-xlim, xlim, 6))
+    ax[1].set_yticks(ticks = np.linspace(-ylim, ylim, 6))
+    ax[1].tick_params(axis='both', labelsize=30)
     ax[1].axis('equal')
     ax[1].set_xlim(-xlim, xlim)
     ax[1].set_ylim(-ylim, ylim)
     
     if orig_box is not None:
         for box in orig_box:
-            ax[1].plot(box[:, 0], box[:, 1], 'r-', linewidth = 0.5)  # Red box outline
+            ax[1].plot(box[:, 0], box[:, 1], 'r-', linewidth = 2.0)  # Red box outline
 
     if trf_box is not None:
         for box in trf_box:
-            ax[1].plot(box[:, 0], box[:, 1], 'g-', linewidth = 0.5)  # Red box outline
+            ax[1].plot(box[:, 0], box[:, 1], 'g-', linewidth = 2.0)  # Green box outline
 
-    cbar2 = fig.colorbar(sc2, ax=ax[1], shrink=0.8)
-    cbar2.set_label("Intensity")
+    # cbar2 = fig.colorbar(sc2, ax=ax[1], shrink=0.8)
+    # cbar2.set_label("Intensity")
 
     plt.tight_layout()
     if save:
         save_path = os.path.join(save_dir, save_name)
-        plt.savefig(save_path)
+        plt.savefig(save_path, dpi = 150)
     else:
         plt.show()
     
@@ -253,13 +259,13 @@ def plot_with_anns(pc1, pc2, xlim = 25, ylim = 25,
 
 if __name__ == "__main__":
 
-    dataroot = "/home/saksham/samsad/mtech-project/datasets/nuscenes"
-    transformer = Transform()
+    dataroot = "/home/saksham/samsad/mtech-project/datasets/nuscenes-mini"
+    transformer = Transform(pos=5.0, angle=20)
 
     results = simulate_object_transform(nuscenes_root=dataroot,
                                         simulator=transformer,
                                         save_path=None,
-                                        num_samples=10)
+                                        num_samples=5)
     
     print(len(results))
 
@@ -278,7 +284,7 @@ if __name__ == "__main__":
     
     # plt.show()
 
-    plot_with_anns(pc1, pc2, save=False, box_corners=(orig_box, trf_box))
+    plot_with_anns(pc1, pc2, save=True, box_corners=(orig_box, trf_box))
     
 
 

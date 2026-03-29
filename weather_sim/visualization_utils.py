@@ -68,7 +68,7 @@ def plot_bev(pc1, pc2, masking = True, xlim = 25, ylim = 25,
     cbar2.set_label("Intensity")
 
     plt.tight_layout()
-    if save:
+    if save and save_dir:
         save_path = os.path.join(save_dir, save_name)
         plt.savefig(save_path)
     else:
@@ -132,7 +132,7 @@ def plot_with_anns(pc1, pc2, masking = True, xlim = 25, ylim = 25,
     cbar2.set_label("Intensity")
 
     plt.tight_layout()
-    if save:
+    if save and save_dir:
         save_path = os.path.join(save_dir, save_name)
         plt.savefig(save_path)
     else:

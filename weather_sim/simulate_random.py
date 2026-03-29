@@ -56,15 +56,14 @@ class FogSim:
         self.max_scenes = max_scenes
         self.samples_dict = {}
 
-    def _process_file(self, file_name_alphas, pset: fogsim.ParameterSet, fog_params):
-        file_name, alpha = file_name_alphas
+    def _process_file(self, file_name, pset: fogsim.ParameterSet, fog_params):
         file_path = os.path.join(self.nusc_root , file_name)
         pc = np.fromfile(file_path, dtype=np.float32).reshape((-1, GLOBAL_RESIZE_N))
         _pc = deepcopy(pc)
         if not MAX_INTENSITY_VAL:
             _pc[:,3] = _pc[:,3]*255
 
-        pset.alpha = alpha
+        #pset.alpha = alpha
         foggified_pc, _, _ = fogsim.simulate_fog(pset, _pc, **fog_params)
 
         if not MAX_INTENSITY_VAL:
@@ -85,7 +84,6 @@ class FogSim:
         for scene_index, scene in enumerate(nusc.scene[:self.max_scenes]):
             first_sample_token = scene['first_sample_token']
             sample_token = first_sample_token
-            alpha = np.random.choice(ALPHA_LIST)
             # iterate samples in this scene
             while sample_token:
                 sample = nusc.get('sample', sample_token)
@@ -102,7 +100,7 @@ class FogSim:
 
                     if (filename.split("/")[-1] in lookup_files) and (sd_token not in tokens):
                         tokens.add(sd_token)
-                        filename_alphas.append((filename, alpha))
+                        filename_alphas.append(filename)
                         self.samples_dict[filename] = is_a_sample
                         is_a_sample = False
 
@@ -171,7 +169,7 @@ if __name__ == "__main__":
 
     #%% Simulate fog with random alpha values
     if args.fault == "fog" or args.fault == "all":
-        args.output_dir = os.path.join(args.output_dir, f"{args.fault}_random")
+        args.output_dir = os.path.join(args.output_dir, f"{args.fault}_{args.fog_alpha}")
         os.makedirs(args.output_dir, exist_ok=True)
         os.makedirs(os.path.join(args.output_dir, 'samples/LIDAR_TOP'), exist_ok=True)
         os.makedirs(os.path.join(args.output_dir, 'sweeps/LIDAR_TOP'), exist_ok=True)
@@ -188,8 +186,8 @@ if __name__ == "__main__":
 
         }
         sample_files, sweeps_files = get_filenames(
-            samples_csv = "/home/saksham/samsad/mtech-project/datasets/nuscenes-trainval/nuscenes/file_list_samples.csv",
-            sweeps_csv = "/home/saksham/samsad/mtech-project/datasets/nuscenes-trainval/nuscenes/file_list_sweeps.csv"
+            samples_csv = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval//val_file_list_samples.csv",
+            sweeps_csv = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval//val_file_list_sweeps.csv"
         )
 
         parameter_set = fogsim.ParameterSet(alpha= fog_params["alpha"], gamma=fog_params["gamma"])
@@ -204,6 +202,6 @@ if __name__ == "__main__":
                         max_scenes=85
                         )
 
-        simulator.simulate(show_pbar=True, max_sample = 10)
+        simulator.simulate(show_pbar=True, max_sample = None)
 
         

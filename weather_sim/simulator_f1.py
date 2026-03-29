@@ -45,15 +45,22 @@ class FogSim:
         pc = np.fromfile(file_path, dtype=np.float32).reshape((-1, GLOBAL_RESIZE_N))
         _pc = deepcopy(pc)
         if not MAX_INTENSITY_VAL:
-            _pc[:,3] = _pc[:,3]*255
+            _pc[:,3] = _pc[:,3]*255.0
 
         # Simulate fog
-        foggified_pc, _, _ = fogsim.simulate_fog(pset, _pc, **fog_params)
+        foggified_pc, _, fog_mask, _ = fogsim.simulate_fog(pset, _pc, **fog_params)
 
         if not MAX_INTENSITY_VAL:
             foggified_pc[:,3] /= 255.0
         assert (foggified_pc.shape[1] == GLOBAL_RESIZE_N)
-        return pc, foggified_pc, file_name
+
+        # Add fog mask as last column and remove channel's column
+        foggified_pc = np.hstack([foggified_pc[:,:-1], fog_mask.reshape(-1, 1)])
+
+        if self.save:
+            save_path = os.path.join(self.output_dir, file_name)
+            foggified_pc.astype('float32').tofile(save_path)
+        #return pc, foggified_pc, file_name
 
     def simulate(self, show_pbar, max_samples):
         file_names = os.listdir(self.input_dir)
@@ -71,12 +78,12 @@ class FogSim:
             else:
                 results = list(pool.imap(process_fn, file_names[:N], chunksize=1))
 
-        if self.save:
-            for pc, foggified_pc, file_name in results:
-                out_path = os.path.join(self.output_dir, file_name)
-                foggified_pc.astype('float32').tofile(out_path)
+        # if self.save:
+        #     for pc, foggified_pc, file_name in results:
+        #         out_path = os.path.join(self.output_dir, file_name)
+        #         foggified_pc.astype('float32').tofile(out_path)
         
-        return results
+        #return results
 
 
 class SnowSim:
@@ -114,7 +121,10 @@ class SnowSim:
 
         if GLOBAL_RESIZE_N < 5:
             augmented_pc = augmented_pc[:,:GLOBAL_RESIZE_N]
-        return points, augmented_pc, file_name
+        
+        if self.save:
+            augmented_pc.astype(np.float32).tofile(save_path)
+        #return points, augmented_pc, file_name
 
     def simulate(self, show_pbar, max_samples):
         file_names = os.listdir(self.input_dir)
@@ -131,11 +141,11 @@ class SnowSim:
                 results = list(p.imap(self.process_one_file, file_names[:N]))
             p.close()
         
-        if self.save:
-            for orig_pc, sim_pc, file_name in results:
-                file_path = os.path.join(self.output_dir, file_name)
-                sim_pc.astype(np.float32).tofile(file_path)
-        return results
+        # if self.save:
+        #     for orig_pc, sim_pc, file_name in results:
+        #         file_path = os.path.join(self.output_dir, file_name)
+        #         sim_pc.astype(np.float32).tofile(file_path)
+        # return results
 
 
 class RainSim:
@@ -195,14 +205,14 @@ class RainSim_New:
             pc[:,3] = pc[:,3]/255.0 
             
         rain_pc = self.driver.simulate(pc)
-        rain_pc = rain_pc[:,:4]
+        # rain_pc = rain_pc[:,:4]
 
-        if MAX_INTENSITY_VAL:
-            rain_pc[:,3] = rain_pc[:,3]*255.0
+        # if MAX_INTENSITY_VAL:
+        #     rain_pc[:,3] = rain_pc[:,3]*255.0
         
-        # remove labels column and append the extra channel info
-        if GLOBAL_RESIZE_N > 4:
-            rain_pc = np.concatenate((rain_pc, last_dims), axis = -1)
+        # # remove labels column and append the extra channel info
+        # if GLOBAL_RESIZE_N > 4:
+        #     rain_pc = np.concatenate((rain_pc, last_dims), axis = -1)
 
         if self.save:
             file_path = os.path.join(self.output_dir, file_name)
@@ -499,13 +509,13 @@ if __name__ == "__main__":
 
     #%% Simulate fog
     if args.fault == "fog" or args.fault == "all":
-        args.output_dir = os.path.join(args.output_dir, f"{args.fault}", f"fog_alpha_{args.fog_alpha}")
+        #args.output_dir = os.path.join(args.output_dir, f"{args.fault}", f"fog_alpha_{args.fog_alpha}")
         os.makedirs(args.output_dir, exist_ok=True)
         fog_params = {
             "alpha": args.fog_alpha,
             "gamma": args.fog_gamma,
             "simulation_options": dict(
-                noise = 2,
+                noise = 10,
                 gain = True,
                 noise_variant = 'v1',
                 hard = True,
@@ -514,14 +524,14 @@ if __name__ == "__main__":
 
         }
         fog_results = simulate_fog(args, fog_params = fog_params, max_samples=None, save=args.save, show_pbar=True)
-        print("Number of fog simulated results: ", len(fog_results))
-        fog_alpha = args.fog_alpha
-        print(f"Fog simulation with alpha = {fog_alpha}")
-        compare_plot(fog_results, 
-                     save_dir=args.plot_save_path,
-                     save_name=f"fog_simulated_{fog_alpha}.png",
-                     plot_title="Fog Simulated Point Cloud",
-                     save = args.save)
+        # print("Number of fog simulated results: ", len(fog_results))
+        # fog_alpha = args.fog_alpha
+        # print(f"Fog simulation with alpha = {fog_alpha}")
+        # compare_plot(fog_results, 
+        #              save_dir=args.plot_save_path,
+        #              save_name=f"fog_simulated_{fog_alpha}.png",
+        #              plot_title="Fog Simulated Point Cloud",
+        #              save = args.save)
 
     #%% Simulate snow
     if args.fault == "snow" or args.fault == "all":

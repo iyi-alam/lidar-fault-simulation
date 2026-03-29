@@ -6,8 +6,8 @@ import os
 # sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Adjust this for dataset
-PC_FEATURE_DIMS = 5
-MAX_INTENSITY_VAL = True # (True: Range-(0,255), False: Range-(0,1))
+PC_FEATURE_DIMS = 5       # For Nuscenes and STF: 5, For KITTY: 4
+MAX_INTENSITY_VAL = True # (True: Range-(0,255), False: Range-(0,1)) # For Nusenes: True For KITTY: False
 
 input_dir = "/home/saksham/samsad/mtech-project/datasets/nuscenes/samples/LIDAR_TOP"
 output_folder = "/home/saksham/samsad/mtech-project/datasets"
