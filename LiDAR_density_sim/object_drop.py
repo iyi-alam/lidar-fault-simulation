@@ -38,6 +38,65 @@ def points_in_box_mask(points, box):
     return mask
 
 
+def get_sweeps(nusc, start_token, max_sweeps=10):
+    sweeps = []
+    token = start_token
+
+    for _ in range(max_sweeps):
+        sd = nusc.get("sample_data", token)
+        sweeps.append(sd)
+
+        if sd["prev"] == "":
+            break
+
+        token = sd["prev"]
+
+    return sweeps
+
+def select_objects_to_drop(nusc, sample, drop_prob):
+    drop_tokens = set()
+
+    for ann_token in sample['anns']:
+        ann = nusc.get('sample_annotation', ann_token)
+
+        if not ann['category_name'].startswith('vehicle'):
+            continue
+
+        if random.random() < drop_prob:
+            drop_tokens.add(ann_token)
+
+    return drop_tokens
+
+def apply_object_drop_sweep(nusc, sample, sd, pc, drop_tokens):
+
+    cs = nusc.get('calibrated_sensor', sd['calibrated_sensor_token'])
+    ego = nusc.get('ego_pose', sd['ego_pose_token'])
+
+    lidar_t = np.array(cs['translation'])
+    lidar_R = Quaternion(cs['rotation'])
+
+    ego_t = np.array(ego['translation'])
+    ego_R = Quaternion(ego['rotation'])
+
+    keep_mask = np.ones(pc.shape[0], dtype=bool)
+
+    for ann_token in drop_tokens:
+
+        box = deepcopy(nusc.get_box(ann_token))
+
+        # transform to THIS sweep frame
+        box.translate(-ego_t)
+        box.rotate(ego_R.inverse)
+
+        box.translate(-lidar_t)
+        box.rotate(lidar_R.inverse)
+
+        inside = points_in_box_mask(pc[:, :3], box)
+        keep_mask[inside] = False
+
+    return pc[keep_mask]
+
+
 
 # OBJECT DROP CORE
 def apply_object_drop(nusc, sample, pc, drop_prob):
@@ -84,29 +143,58 @@ def process_one(args):
         nusc_root,
         sample,
         save_root,
-        drop_prob
+        drop_prob,
+        max_sweeps
     ) = args
 
     global nusc
 
     lidar_token = sample['data']['LIDAR_TOP']
-    sd = nusc.get('sample_data', lidar_token)
 
-    in_path = os.path.join(nusc_root, sd['filename'])
-    pc = load_pc(in_path)
+    # Step 1: decide which objects to drop ONCE
+    drop_tokens = select_objects_to_drop(nusc, sample, drop_prob)
 
-    pc_out = apply_object_drop(nusc, sample, pc, drop_prob)
+    # save metadata
+    meta = {
+        "sample_token": sample["token"],
+        "dropped_annotations": list(drop_tokens)
+    }
 
-    out_path = os.path.join(
+    meta_path = os.path.join(
         save_root,
-        sd['filename']
+        "meta",
+        f"{sample['token']}.npy"
     )
 
-    save_pc(pc_out, out_path)
+    os.makedirs(os.path.dirname(meta_path), exist_ok=True)
+    np.save(meta_path, meta)
+
+    # Step 2: traverse sweeps
+    sweeps = get_sweeps(nusc, lidar_token, max_sweeps)
+
+    for sd in sweeps:
+
+        in_path = os.path.join(nusc_root, sd['filename'])
+        pc = load_pc(in_path)
+
+        pc_out = apply_object_drop_sweep(
+            nusc,
+            sample,
+            sd,
+            pc,
+            drop_tokens
+        )
+
+        out_path = os.path.join(
+            save_root,
+            sd['filename']
+        )
+
+        save_pc(pc_out, out_path)
 
     return 1
 
-def build_tasks(nusc, nusc_root, save_root, drop_prob):
+def build_tasks(nusc, nusc_root, save_root, drop_prob, max_sweeps):
     tasks = []
 
     for sample in nusc.sample:
@@ -114,7 +202,8 @@ def build_tasks(nusc, nusc_root, save_root, drop_prob):
             nusc_root,
             sample,
             save_root,
-            drop_prob
+            drop_prob,
+            max_sweeps
         ))
 
     return tasks
@@ -123,6 +212,7 @@ def simulate_object_drop_fault_mp(
     nusc_root,
     save_root,
     drop_prob=0.5,
+    max_sweeps=10,
     num_workers=None
 ):
 
@@ -133,7 +223,7 @@ def simulate_object_drop_fault_mp(
         verbose=False
     )
 
-    tasks = build_tasks(nusc, nusc_root, save_root, drop_prob)
+    tasks = build_tasks(nusc, nusc_root, save_root, drop_prob, max_sweeps)
 
     print(f"Total samples: {len(tasks)}")
 
@@ -149,12 +239,15 @@ def simulate_object_drop_fault_mp(
 
 if __name__ == "__main__":
 
+    drop_prob = 0.1
     NUSC_ROOT = "/home/saksham/samsad/mtech-project/datasets/nuscenes-mini/"
-    SAVE_ROOT = "/home/saksham/samsad/mtech-project/datasets/nusc-mini-sim/lidar_corrupt/density/object_drop/"
+    SAVE_ROOT = f"/home/saksham/samsad/mtech-project/datasets/nusc-mini-sim/lidar_corrupt/density/object_drop_labelled_{drop_prob}/"
+    os.makedirs(SAVE_ROOT, exist_ok=True)
 
     simulate_object_drop_fault_mp(
         nusc_root=NUSC_ROOT,
         save_root=SAVE_ROOT,
-        drop_prob=0.5,
+        drop_prob=drop_prob,
+        max_sweeps=10,
         num_workers=18
     )

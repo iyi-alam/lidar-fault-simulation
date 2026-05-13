@@ -3,8 +3,12 @@ import numpy as np
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 from nuscenes.nuscenes import NuScenes
+import pickle
 
 
+val_samples_file= "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/nuscenes_p1_val_samples.pkl"
+with open(val_samples_file, 'rb') as f:
+    VAL_SAMPLES = pickle.load(f)
 
 # NOISE FUNCTIONS
 def apply_channel_drop(pc, num_drop=16):
@@ -25,7 +29,7 @@ def apply_beam_drop(pc, beam_width_deg=5):
     x, y = pc[:, 0], pc[:, 1]
     az = np.degrees(np.arctan2(y, x))
 
-    center = np.random.uniform(-60, 60)
+    center = np.random.uniform(-180, 180)
     half = beam_width_deg / 2
 
     lo = center - half
@@ -43,7 +47,8 @@ def apply_beam_drop(pc, beam_width_deg=5):
 
 # Optional: simple echo loss (random thinning)
 def apply_echo_loss(pc, drop_ratio=0.1):
-    return pc
+    keep = np.random.rand(len(pc)) > drop_ratio
+    return pc[keep]
 
 
 
@@ -80,11 +85,15 @@ def process_one(args):
                 **noise_params.get(noise_name, {})
             )
 
+            postfix = f"_{noise_params['channel_drop']['num_drop']}"
+
         elif noise_name == "beam_drop":
             pc_out = apply_beam_drop(
                 pc,
                 **noise_params.get(noise_name, {})
             )
+
+            postfix = f"_{noise_params['beam_drop']['beam_width_deg']}"
 
         elif noise_name == "echo_loss":
             pc_out = apply_echo_loss(
@@ -92,12 +101,14 @@ def process_one(args):
                 **noise_params.get(noise_name, {})
             )
 
+            postfix = f"_{noise_params['echo_loss']['drop_ratio']}"
+
         else:
             continue
 
         out_path = os.path.join(
             save_root,
-            noise_name,
+            f"{noise_name}{postfix}",
             rel_path
         )
 
@@ -137,7 +148,7 @@ def build_tasks(nusc, nusc_root, save_root, noise_dict, noise_params, max_sweeps
     tasks = []
     visited_tokens = set()
 
-    for sample in nusc.sample:
+    for sample in VAL_SAMPLES: #nusc.sample:
         lidar_token = sample["data"]["LIDAR_TOP"]
         sweeps = get_sweeps(nusc, lidar_token, max_sweeps)
 
@@ -170,6 +181,7 @@ def build_tasks(nusc, nusc_root, save_root, noise_dict, noise_params, max_sweeps
 def simulate_density_mp(
     nusc_root,
     save_root,
+    version,
     noise_dict,
     noise_params,
     max_sweeps=10,
@@ -177,7 +189,7 @@ def simulate_density_mp(
 ):
 
     nusc = NuScenes(
-        version="v1.0-mini",
+        version=version,
         dataroot=nusc_root,
         verbose=False
     )
@@ -206,24 +218,28 @@ def simulate_density_mp(
 
 if __name__ == "__main__":
 
-    NUSC_ROOT = "/home/saksham/samsad/mtech-project/datasets/nuscenes-mini/"
-    SAVE_ROOT = "/home/saksham/samsad/mtech-project/datasets/nusc-mini-sim/lidar_corrupt/density/"
+    NUSC_ROOT = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval"
+    SAVE_ROOT = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval-sim/"
 
     noise_dict = {
         "channel_drop": True,
-        "beam_drop": True,
-        "echo_loss": True
+        #"beam_drop": True,
+        # "echo_loss": False
     }
 
     noise_params = {
-        "channel_drop": {"num_drop": 8},
-        "beam_drop": {"beam_width_deg": 30},
-        "echo_loss": {"drop_ratio": 0.1}
+        "channel_drop": {"num_drop": 24},
+        #"beam_drop": {"beam_width_deg": 30},
+        # "echo_loss": {"drop_ratio": 0.1}
     }
+
+    # for beam_width in [30, 60, 90, 120, 180]:
+    #     noise_params["beam_drop"]["beam_width_deg"] = beam_width
 
     simulate_density_mp(
         nusc_root=NUSC_ROOT,
         save_root=SAVE_ROOT,
+        version = "v1.0-trainval",
         noise_dict=noise_dict,
         noise_params=noise_params,
         max_sweeps=None,
