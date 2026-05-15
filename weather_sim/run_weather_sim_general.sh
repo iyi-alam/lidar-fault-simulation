@@ -11,7 +11,7 @@ DATA_ROOT="/home/saksham/samsad/mtech-project/datasets/nuscenes-mini/"
 INPUT_DIR="${DATA_ROOT}/samples/LIDAR_TOP"
 
 # Output directory (will contain fog/, snow/, rain/, dust/)
-OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nusc-mini-corrupted/fog/fog_0.04_new/samples/LIDAR_TOP"
+OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nusc-mini-corrupted/fog/samples/LIDAR_TOP"
 
 # # Plot directory
 # PLOT_SAVE_PATH="${DATA_ROOT}/plots"
@@ -22,7 +22,7 @@ OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nusc-mini-corrupted/fog
 ###############################################
 
 # Sweep ranges
-FOG_ALPHAS=(0.04)   # 0.04 SKIPPED
+FOG_ALPHAS=(0.1)   # 0.04 SKIPPED
 FOG_GAMMA=1e-6
 
 RAIN_RATES=(5.0 15.0 50.0)          # 50.0 SKIPPED
@@ -149,9 +149,9 @@ echo "=============================="
 echo " Running ALL weather faults..."
 echo "=============================="
 
-#simulate_fog
+simulate_fog
 #simulate_rain
-simulate_snow false   # Run without LISA snow first
+#simulate_snow false   # Run without LISA snow first
 # simulate_dust
 
 echo "======================================="

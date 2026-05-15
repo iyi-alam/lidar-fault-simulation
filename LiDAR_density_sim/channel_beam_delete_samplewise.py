@@ -6,34 +6,24 @@ from nuscenes.nuscenes import NuScenes
 import pickle
 
 
-val_samples_file= "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/nuscenes_p1_val_samples.pkl"
-with open(val_samples_file, 'rb') as f:
+val_samples_file = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/nuscenes_p1_val_samples.pkl"
+with open(val_samples_file, "rb") as f:
     VAL_SAMPLES = pickle.load(f)
 
-# NOISE FUNCTIONS
-def apply_channel_drop(pc, num_drop=16):
+
+def apply_channel_drop(pc, drop_ch):
     channels = pc[:, 4].astype(int)
-    unique_ch = np.unique(channels)
-
-    drop_ch = np.random.choice(
-        unique_ch,
-        size=min(num_drop, len(unique_ch)),
-        replace=False
-    )
-
     keep_mask = ~np.isin(channels, drop_ch)
     return pc[keep_mask]
 
 
-def apply_beam_drop(pc, beam_width_deg=5):
+def apply_beam_drop(pc, center_deg, beam_width_deg):
     x, y = pc[:, 0], pc[:, 1]
     az = np.degrees(np.arctan2(y, x))
 
-    center = np.random.uniform(-180, 180)
     half = beam_width_deg / 2
-
-    lo = center - half
-    hi = center + half
+    lo = center_deg - half
+    hi = center_deg + half
 
     if lo < -180:
         keep = ~((az > lo + 360) | (az < hi))
@@ -45,14 +35,6 @@ def apply_beam_drop(pc, beam_width_deg=5):
     return pc[keep]
 
 
-# Optional: simple echo loss (random thinning)
-def apply_echo_loss(pc, drop_ratio=0.1):
-    keep = np.random.rand(len(pc)) > drop_ratio
-    return pc[keep]
-
-
-
-# IO
 def load_pc(path):
     return np.fromfile(path, dtype=np.float32).reshape(-1, 5)
 
@@ -62,15 +44,14 @@ def save_pc(pc, path):
     pc.astype(np.float32).tofile(path)
 
 
-
-# WORKER
 def process_one(args):
     (
         in_path,
         rel_path,
         save_root,
         noise_dict,
-        noise_params
+        noise_params,
+        fault_spec
     ) = args
 
     pc = load_pc(in_path)
@@ -82,26 +63,17 @@ def process_one(args):
         if noise_name == "channel_drop":
             pc_out = apply_channel_drop(
                 pc,
-                **noise_params.get(noise_name, {})
+                drop_ch=fault_spec["channel_drop"]
             )
-
             postfix = f"_{noise_params['channel_drop']['num_drop']}"
 
         elif noise_name == "beam_drop":
             pc_out = apply_beam_drop(
                 pc,
-                **noise_params.get(noise_name, {})
+                center_deg=fault_spec["beam_drop_center"],
+                beam_width_deg=noise_params["beam_drop"]["beam_width_deg"]
             )
-
             postfix = f"_{noise_params['beam_drop']['beam_width_deg']}"
-
-        elif noise_name == "echo_loss":
-            pc_out = apply_echo_loss(
-                pc,
-                **noise_params.get(noise_name, {})
-            )
-
-            postfix = f"_{noise_params['echo_loss']['drop_ratio']}"
 
         else:
             continue
@@ -117,7 +89,6 @@ def process_one(args):
     return 1
 
 
-# SWEEP CHAIN
 def get_sweeps(nusc, start_token, max_sweeps=None):
     sweeps = []
     token = start_token
@@ -129,11 +100,9 @@ def get_sweeps(nusc, start_token, max_sweeps=None):
 
         count += 1
 
-        # stop if reached limit
         if max_sweeps is not None and count >= max_sweeps:
             break
 
-        # stop if no more previous sweeps
         if sd["prev"] == "":
             break
 
@@ -142,21 +111,38 @@ def get_sweeps(nusc, start_token, max_sweeps=None):
     return sweeps
 
 
-# BUILD TASK LIST
-def build_tasks(nusc, nusc_root, save_root, noise_dict, noise_params, max_sweeps):
+def build_fault_spec(noise_dict, noise_params):
+    spec = {}
 
+    if noise_dict.get("channel_drop", False):
+        all_channels = np.arange(32)
+        num_drop = noise_params["channel_drop"]["num_drop"]
+
+        spec["channel_drop"] = np.random.choice(
+            all_channels,
+            size=min(num_drop, len(all_channels)),
+            replace=False
+        )
+
+    if noise_dict.get("beam_drop", False):
+        spec["beam_drop_center"] = np.random.uniform(-180, 180)
+
+    return spec
+
+
+def build_tasks(nusc, nusc_root, save_root, noise_dict, noise_params, max_sweeps):
     tasks = []
     visited_tokens = set()
 
-    for sample in VAL_SAMPLES: #nusc.sample:
+    for sample in VAL_SAMPLES:
         lidar_token = sample["data"]["LIDAR_TOP"]
         sweeps = get_sweeps(nusc, lidar_token, max_sweeps)
 
-        for sd in sweeps:
+        fault_spec = build_fault_spec(noise_dict, noise_params)
 
+        for sd in sweeps:
             token = sd["token"]
 
-            # skip already processed sweep
             if token in visited_tokens:
                 continue
 
@@ -170,14 +156,13 @@ def build_tasks(nusc, nusc_root, save_root, noise_dict, noise_params, max_sweeps
                 rel_path,
                 save_root,
                 noise_dict,
-                noise_params
+                noise_params,
+                fault_spec
             ))
 
     return tasks
 
 
-
-# MAIN
 def simulate_density_mp(
     nusc_root,
     save_root,
@@ -187,7 +172,6 @@ def simulate_density_mp(
     max_sweeps=10,
     num_workers=None
 ):
-
     nusc = NuScenes(
         version=version,
         dataroot=nusc_root,
@@ -214,7 +198,6 @@ def simulate_density_mp(
         ))
 
     print(f"Finished. Saved to {save_root}")
-
 
 if __name__ == "__main__":
 

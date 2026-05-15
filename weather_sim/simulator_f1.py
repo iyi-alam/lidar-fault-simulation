@@ -509,7 +509,8 @@ if __name__ == "__main__":
 
     #%% Simulate fog
     if args.fault == "fog" or args.fault == "all":
-        #args.output_dir = os.path.join(args.output_dir, f"{args.fault}", f"fog_alpha_{args.fog_alpha}")
+        #args.output_dir = os.path.join(args.output_dir, f"fog_alpha_{args.fog_alpha}")
+        args.output_dir = args.output_dir.replace("fog", f"fog_alpha_{args.fog_alpha}")
         os.makedirs(args.output_dir, exist_ok=True)
         fog_params = {
             "alpha": args.fog_alpha,

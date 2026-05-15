@@ -87,8 +87,9 @@ def process_one(args):
             continue
 
         pc_noisy = apply_noise(pc, noise_name, noise_params)
-
-        out_path = os.path.join(save_root, f"scene_{noise_name}", rel_path)
+        noise_vals = list(noise_params[noise_name].values())
+        postfix = '_'.join(str(v) for v in noise_vals)
+        out_path = os.path.join(save_root, f"scene_{noise_name}_{postfix}", rel_path)
         save_pc(pc_noisy, out_path)
     
     return 1  # progress unit
@@ -176,8 +177,8 @@ if __name__ == "__main__":
     noise_dict = {
         "gaussian_cart": False,
         "gaussian_rad": True,
-        "background": True,
-        "upsample": True
+        "background": False,
+        "upsample": False
     }
 
     # c is percentage affected points and jitter is point shift in upsampling
@@ -188,11 +189,13 @@ if __name__ == "__main__":
         "upsample": {"percentage": 0.10, "jitter": 0.1}
     }
 
-    simulate_and_save_mp(
-        nusc_root=NUSC_ROOT,
-        save_root=SAVE_ROOT,
-        noise_dict=noise_dict,
-        noise_params=noise_params,
+    for gaussian_rad_scale in [0.01, 0.02, 0.05, 1.0, 2.0]:
+        noise_params["gaussian_rad"]["scale"] = gaussian_rad_scale
+        simulate_and_save_mp(
+            nusc_root=NUSC_ROOT,
+            save_root=SAVE_ROOT,
+            noise_dict=noise_dict,
+            noise_params=noise_params,
         max_sweeps=MAX_SWEEPS,
         num_workers= min(NUM_WORKERS, cpu_count())
     )
