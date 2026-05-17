@@ -495,6 +495,7 @@ def get_fault_args():
     parser.add_argument("--dust_level", type=str, default="moderate")
     parser.add_argument("--input_dir", type=str)
     parser.add_argument("--output_dir", type=str)
+    parser.add_argument("--postfix", type=str)
     parser.add_argument("--save", action='store_true', default=False)
     parser.add_argument("--plot_save_path")
     #parser.add_argument("--max_samples")
@@ -509,8 +510,8 @@ if __name__ == "__main__":
 
     #%% Simulate fog
     if args.fault == "fog" or args.fault == "all":
-        #args.output_dir = os.path.join(args.output_dir, f"fog_alpha_{args.fog_alpha}")
-        args.output_dir = args.output_dir.replace("fog", f"fog_alpha_{args.fog_alpha}")
+        args.output_dir = os.path.join(args.output_dir, f"fog_alpha_{args.fog_alpha}", args.postfix)
+        #args.output_dir = args.output_dir.replace("fog", f"fog_alpha_{args.fog_alpha}")
         os.makedirs(args.output_dir, exist_ok=True)
         fog_params = {
             "alpha": args.fog_alpha,

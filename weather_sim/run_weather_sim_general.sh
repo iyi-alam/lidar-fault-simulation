@@ -5,13 +5,13 @@
 ###############################################
 
 # NuScenes data root
-DATA_ROOT="/home/saksham/samsad/mtech-project/datasets/nuscenes-mini/"
-
+DATA_ROOT="/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval"
+POSTFIX=$1 #"samples/LIDAR_TOP"
 # Input directory = nuScenes sweeps for LIDAR_TOP
-INPUT_DIR="${DATA_ROOT}/samples/LIDAR_TOP"
+INPUT_DIR="${DATA_ROOT}/${POSTFIX}"
 
 # Output directory (will contain fog/, snow/, rain/, dust/)
-OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nusc-mini-corrupted/fog/samples/LIDAR_TOP"
+OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval-sim/"
 
 # # Plot directory
 # PLOT_SAVE_PATH="${DATA_ROOT}/plots"
@@ -22,7 +22,7 @@ OUTPUT_BASE="/home/saksham/samsad/mtech-project/datasets/nusc-mini-corrupted/fog
 ###############################################
 
 # Sweep ranges
-FOG_ALPHAS=(0.1)   # 0.04 SKIPPED
+FOG_ALPHAS=(0.01 0.06)   # 0.04 SKIPPED
 FOG_GAMMA=1e-6
 
 RAIN_RATES=(5.0 15.0 50.0)          # 50.0 SKIPPED
@@ -60,7 +60,7 @@ simulate_fog () {
             --snow_rate 0 \
             --terminal_velocity "$TERMINAL_VELOCITY" \
             --dust_level "none" \
-            --save
+            --save --postfix $POSTFIX
     done
 }
 
@@ -81,7 +81,7 @@ simulate_rain () {
             --snow_rate 0 \
             --terminal_velocity "$TERMINAL_VELOCITY" \
             --dust_level "none" \
-            --save
+            --save --postfix $POSTFIX
     done
 }
 
@@ -139,7 +139,7 @@ simulate_dust () {
             --snow_rate 0 \
             --terminal_velocity "$TERMINAL_VELOCITY" \
             --dust_level "$DUST_LEVEL" \
-            --save
+            --save --postfix $POSTFIX
     done
 }
 

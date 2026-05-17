@@ -208,7 +208,7 @@ if __name__ == "__main__":
     parser.add_argument("--enable_channel_drop", action="store_true")
     parser.add_argument("--enable_beam_drop", action="store_true")
     parser.add_argument("--beam_width_deg", type=int, default=180)
-    parser.add_argument("--channel_drop", type=float, default=16)
+    parser.add_argument("--channel_drop", type=int, default=16)
     args = parser.parse_args()
 
     noise_dict = {
