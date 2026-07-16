@@ -15,13 +15,17 @@ def applyMask(x, y, i, mask):
 
 def plot_bev(pc1, pc2, masking = True, xlim = 25, ylim = 25, 
              save = False, save_dir = "", save_name = "modified_point_cloud.png",
-             show_error = True, custom_title = None):
+             show_error = True, custom_title = None, special_label = None):
     
     # pc1 = np.fromfile(pc_file1, dtype = np.float32).reshape((-1,5))
     # pc2 = np.fromfile(pc_file2, dtype = np.float32).reshape((-1,5))
     
     x1, y1, i1 = pc1[:,0], pc1[:,1], pc1[:,3]
     x2, y2, i2 = pc2[:,0], pc2[:,1], pc2[:,3]
+
+    if special_label is not None:
+        mask2 = pc2[:, 4] == special_label
+        x2_special, y2_special, _ = applyMask(x2, y2, i2, mask2)
 
     if pc1.shape == pc2.shape:
         # Compute MSE between intensities
@@ -51,6 +55,8 @@ def plot_bev(pc1, pc2, masking = True, xlim = 25, ylim = 25,
     cbar1.set_label("Intensity")
 
     sc2 = ax[1].scatter(x2, y2, c = i2, cmap='viridis', s=0.1)
+    if special_label is not None:
+        ax[1].scatter(x2_special, y2_special, c='red', s=0.1) 
     if custom_title is None:
         custom_title = "Modified point cloud"
 

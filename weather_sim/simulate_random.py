@@ -151,10 +151,16 @@ def get_fault_args():
     parser.add_argument('--fault', type=str, default="all")
     parser.add_argument("--fog_alpha", type = float, default=0.04)
     parser.add_argument("--fog_gamma", type=float, default=1e-6)
-    parser.add_argument("--nusc_root", type=str)
+    parser.add_argument("--rain_rate", type=float, default=50.0)
+    parser.add_argument("--snow_rate", type=float, default=1.5)
+    parser.add_argument("--lisa_snow", action='store_true', default=False)
+    parser.add_argument("--terminal_velocity", type=float, default=1.6)
+    parser.add_argument("--dust_level", type=str, default="moderate")
+    parser.add_argument("--input_dir", type=str)
     parser.add_argument("--output_dir", type=str)
+    parser.add_argument("--postfix", type=str, default="")
     parser.add_argument("--save", action='store_true', default=False)
-    parser.add_argument("--plot_save_path", default=None)
+    parser.add_argument("--plot_save_path")
     #parser.add_argument("--max_samples")
     args = parser.parse_args()
     return args
@@ -169,15 +175,15 @@ if __name__ == "__main__":
 
     #%% Simulate fog with random alpha values
     if args.fault == "fog" or args.fault == "all":
-        args.output_dir = os.path.join(args.output_dir, f"{args.fault}_{args.fog_alpha}")
-        os.makedirs(args.output_dir, exist_ok=True)
-        os.makedirs(os.path.join(args.output_dir, 'samples/LIDAR_TOP'), exist_ok=True)
-        os.makedirs(os.path.join(args.output_dir, 'sweeps/LIDAR_TOP'), exist_ok=True)
+        args.output_dir = os.path.join(args.output_dir, f"{args.fault}_random")
+        # os.makedirs(args.output_dir, exist_ok=True)
+        # os.makedirs(os.path.join(args.output_dir, 'samples/LIDAR_TOP'), exist_ok=True)
+        # os.makedirs(os.path.join(args.output_dir, 'sweeps/LIDAR_TOP'), exist_ok=True)
         fog_params = {
             "alpha": args.fog_alpha,
             "gamma": args.fog_gamma,
             "simulation_options": dict(
-                noise = 2,
+                noise = 10,
                 gain = True,
                 noise_variant = 'v1',
                 hard = True,

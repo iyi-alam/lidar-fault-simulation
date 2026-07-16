@@ -22,7 +22,7 @@ class Lisa:
     """Lidar light scattering augmentation (LISA)
     """
     def __init__(self, rain_rate = 30, snow_rate = 0.5, m=1.328, lam=905, rmax=200, rmin=1.5, bdiv=3e-3, dst=0.05,
-                 dR=0.09, atm_model='rain', mode='strongest', disable_multi_lisa = False):
+                 dR=0.09, atm_model='rain', mode='strongest', disable_multi_lisa = False, scale_particle_num = 1.0, alpha = 0.04):
         '''
         Initialize LISA class
         Parameters
@@ -39,7 +39,7 @@ class Lisa:
         mode        : lidar return mode: "strongest" or "last"
 
         '''
-        self.m    = m
+        self.m    = m 
         self.lam  = lam
         self.rmax = rmax   # max range (m)
         self.bdiv = bdiv  # beam divergence (rad)
@@ -49,13 +49,14 @@ class Lisa:
         self.mode = mode
         self.atm_model = atm_model
         self.rate = rain_rate
-        
-        self.D = np.logspace(-5, 1, 2000) # diameter range for Mie, (mm)
-        x = 1e6 * np.pi * 0.5 * self.D / lam # 1e6 since D in mm and lam in nm
-        qs = calc_qs(x, self.m, 1.) # efficiencies are unitless
-        #print("qs shape: ", qs.shape)
-        self.q_ext = qs[:,0]
-        self.q_back = qs[:,2]
+        self.scale_particle_num = scale_particle_num
+        self.alpha = alpha
+        #self.D = np.logspace(-5, 1, 2000) # diameter range for Mie, (mm)
+        # x = 1e6 * np.pi * 0.5 * self.D / lam # 1e6 since D in mm and lam in nm
+        # qs = calc_qs(x, self.m, 1.) # efficiencies are unitless
+        # #print("qs shape: ", qs.shape)
+        # self.q_ext = qs[:,0]
+        # self.q_back = qs[:,2]
 
         # -----------------------------------------------
         # Bind atmospheric distribution model (no lambdas)
@@ -196,21 +197,22 @@ class Lisa:
         
         
         Nd          = self.N_model(self.D,Rr) # density of rain droplets (m^-3)
-        alpha, beta = alpha_beta(Nd, self.D, self.q_ext, self.q_back)     # extinction coeff. (1/m)  
+        #alpha, beta = alpha_beta(Nd, self.D, self.q_ext, self.q_back)     # extinction coeff. (1/m)  
         
         ran   = np.sqrt(x**2 + y**2 + z**2)                               # range in m
         if ran>rmin:
             bvol  = (np.pi/3)*ran*(1e-3*Db(ran)/2)**2                         # beam volume in m^3 (cone)
-            Nt    = self.N_tot(Rr,dst) * bvol                                 # total number of particles in beam path
+            Nt    = self.scale_particle_num * self.N_tot(Rr,dst) * bvol                                 # total number of particles in beam path
             Nt    = np.int32(np.floor(Nt) + (np.random.rand() < Nt-int(Nt)))  # convert to integer w/ probabilistic rounding
         else:
             Nt = 0
+        
             
         ran_r = ran*(np.random.rand(Nt))**(1/3) # sample distances from a quadratic pdf
         indx  = np.where(ran_r>rmin)[0]         # keep points where ranges larger than rmin
         Nt    = len(indx)                       # new particle number
         
-        P0  = ref*np.exp(-2*alpha*ran)/(ran**2) # power
+        P0  = ref*np.exp(-2*self.alpha*ran)/(ran**2) # power
         snr = P0/Pmin # signal noise ratio
         if Nt>0:
             Dr    = self.N_sam(Rr,Nt,dst) # randomly sample Nt particle diameters
@@ -218,7 +220,7 @@ class Lisa:
             ran_r = ran_r[indx]
             
             # Calculate powers for all particles       
-            Pr = ref_r*np.exp(-2*alpha*ran_r)*np.minimum((Dr/Db(ran_r))**2,np.ones(Dr.shape))/(ran_r**2)
+            Pr = ref_r*np.exp(-2*self.alpha*ran_r)*np.minimum((Dr/Db(ran_r))**2,np.ones(Dr.shape))/(ran_r**2)
             if (self.mode=='strongest'):
                 ind_r = np.argmax(Pr) # index of the max power
                 
@@ -228,19 +230,19 @@ class Lisa:
                     labl    = 0 # label for lost point
                 elif P0<Pr[ind_r]: # scatterer has larger power
                     ran_new = ran_r[ind_r] # new range is scatterer range
-                    ref_new = ref_r*np.exp(-2*alpha*ran_new)*np.minimum((Dr[ind_r]/Db(ran_r[ind_r]))**2,1) # new reflectance biased by scattering
+                    ref_new = ref_r*np.exp(-2*self.alpha*ran_new)*np.minimum((Dr[ind_r]/Db(ran_r[ind_r]))**2,1) # new reflectance biased by scattering
                     labl    = 1 # label for randomly scattered point 
                 else: # object return has larger power
                     sig     = self.dR/np.sqrt(2*snr)        # std of range uncertainty
                     ran_new = ran + np.random.normal(0,sig) # range with uncertainty added
-                    ref_new = ref*np.exp(-2*alpha*ran)      # new reflectance modified by scattering
+                    ref_new = ref*np.exp(-2*self.alpha*ran)      # new reflectance modified by scattering
                     labl    = 2                             # label for a non-scattering point
             elif (self.mode=='last'):
                 # if object power larger than Pmin, then nothing is scattered
                 if P0>Pmin:
                     sig     = self.dR/np.sqrt(2*snr)        # std of range uncertainty
                     ran_new = ran + np.random.normal(0,sig) # range with uncertainty added
-                    ref_new = ref*np.exp(-2*alpha*ran)      # new reflectance modified by scattering
+                    ref_new = ref*np.exp(-2*self.alpha*ran)      # new reflectance modified by scattering
                     labl    = 2                             # label for a non-scattering point
                 # otherwise find the furthest point above Pmin
                 else:
@@ -252,7 +254,7 @@ class Lisa:
                     else:
                         ind_r   = np.where(ran_r == np.max(ran_r[inds]))[0]
                         ran_new = ran_r[ind_r] # new range is scatterer range
-                        ref_new = ref_r*np.exp(-2*alpha*ran_new)*np.minimum((Dr[ind_r]/Db(ran_r[ind_r]))**2,1) # new reflectance biased by scattering
+                        ref_new = ref_r*np.exp(-2*self.alpha*ran_new)*np.minimum((Dr[ind_r]/Db(ran_r[ind_r]))**2,1) # new reflectance biased by scattering
                         labl    = 1 # label for randomly scattered point 
                     
             else:
@@ -266,7 +268,7 @@ class Lisa:
             else:
                 sig     = self.dR/np.sqrt(2*snr)        # std of range uncertainty
                 ran_new = ran + np.random.normal(0,sig) # range with uncertainty added
-                ref_new = ref*np.exp(-2*alpha*ran)      # new reflectance modified by scattering
+                ref_new = ref*np.exp(-2*self.alpha*ran)      # new reflectance modified by scattering
                 labl    = 2                             # label for a non-scattering point
         
         # Angles are same
@@ -308,7 +310,7 @@ class Lisa:
         indx  = np.where(ran>rmin)[0]         # keep points where ranges larger than rmin
         
         P0        = np.zeros((leng,))                                  # init back reflected power
-        P0[indx]  = ref[indx]*np.exp(-2*alpha*ran[indx])/(ran[indx]**2) # calculate reflected power
+        P0[indx]  = ref[indx]*np.exp(-2*self.alpha*ran[indx])/(ran[indx]**2) # calculate reflected power
         snr       = P0/Pmin                                             # signal noise ratio
         
         indp = np.where(P0>Pmin)[0] # keep points where power is larger than Pmin
@@ -317,7 +319,7 @@ class Lisa:
         sig[indp]  = self.dR/np.sqrt(2*snr[indp])               # calc. std of range uncertainty
         ran_new    = np.zeros((leng,))                         # init new range
         ran_new[indp]    = ran[indp] + np.random.normal(0,sig[indp])  # range with uncertainty added, keep range 0 if P<Pmin
-        ref_new    = ref*np.exp(-2*alpha*ran)                   # new reflectance modified by scattering
+        ref_new    = ref*np.exp(-2*self.alpha*ran)                   # new reflectance modified by scattering
         
         # Init angles
         phi = np.zeros((leng,))

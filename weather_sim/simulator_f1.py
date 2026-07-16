@@ -27,18 +27,20 @@ from LISA.pylisa.lisa import Lisa
 
 GLOBAL_RESIZE_N = config_params.PC_FEATURE_DIMS #Some datasets can be resized with (-1,5) while some need to resize to (-1,4). This variable takes care of this.
 MAX_INTENSITY_VAL = config_params.MAX_INTENSITY_VAL
+RANDOM_ALPHA = [0.06, 0.1]
 
 
 class FogSim:
     
     def __init__(self, input_dir, output_dir, 
                  paramset: fogsim.ParameterSet,
-                 simulation_options, save = True):
+                 simulation_options, save = True, random_alpha=False):
         self.input_dir = input_dir 
         self.output_dir = output_dir
         self.pset = paramset
         self.simulation_options = simulation_options
         self.save = save
+        self.random_alpha = random_alpha
 
     def _process_file(self, file_name, pset, fog_params):
         file_path = os.path.join(self.input_dir , file_name)
@@ -48,6 +50,8 @@ class FogSim:
             _pc[:,3] = _pc[:,3]*255.0
 
         # Simulate fog
+        if self.random_alpha:
+            pset.alpha = np.random.choice(RANDOM_ALPHA)
         foggified_pc, _, fog_mask, _ = fogsim.simulate_fog(pset, _pc, **fog_params)
 
         if not MAX_INTENSITY_VAL:
@@ -331,13 +335,14 @@ class DustSim:
         return results
 
 
-def simulate_fog(args, fog_params, save = False, show_pbar = True, max_samples = None):
+def simulate_fog(args, fog_params, save = False, show_pbar = True, max_samples = None, random_alpha = False):
     parameter_set = fogsim.ParameterSet(alpha= fog_params["alpha"], gamma=fog_params["gamma"])
     simulator = FogSim(input_dir= args.input_dir,
                        output_dir= args.output_dir,
                        paramset= parameter_set,
                        simulation_options=fog_params["simulation_options"],
-                       save = save)
+                       save = save,
+                       random_alpha = random_alpha)
 
     return simulator.simulate(show_pbar=show_pbar, max_samples=max_samples)
 
@@ -393,11 +398,13 @@ def simulate_rain_new(args, show_pbar = True, max_samples = None, save = False):
     '''
     lisa_driver = Lisa(
         rain_rate= args.rain_rate,
+        #reflectivity = 0.95,
         m=1.328,
         rmax = 120,
-        dst = 0.05,
+        dst = 0.03,
         dR = 0.09,
-        atm_model='rain'
+        atm_model='rain',
+        scale_particle_num= 100.0
     )
 
     simulator = RainSim_New(
@@ -487,6 +494,7 @@ def get_fault_args():
 
     parser.add_argument('--fault', type=str, default="all")
     parser.add_argument("--fog_alpha", type = float, default=0.04)
+    parser.add_argument("--random_alpha", action='store_true', default=False)
     parser.add_argument("--fog_gamma", type=float, default=1e-6)
     parser.add_argument("--rain_rate", type=float, default=50.0)
     parser.add_argument("--snow_rate", type=float, default=1.5)
@@ -495,7 +503,7 @@ def get_fault_args():
     parser.add_argument("--dust_level", type=str, default="moderate")
     parser.add_argument("--input_dir", type=str)
     parser.add_argument("--output_dir", type=str)
-    parser.add_argument("--postfix", type=str)
+    parser.add_argument("--postfix", type=str, default="")
     parser.add_argument("--save", action='store_true', default=False)
     parser.add_argument("--plot_save_path")
     #parser.add_argument("--max_samples")
@@ -510,7 +518,7 @@ if __name__ == "__main__":
 
     #%% Simulate fog
     if args.fault == "fog" or args.fault == "all":
-        args.output_dir = os.path.join(args.output_dir, f"fog_alpha_{args.fog_alpha}", args.postfix)
+        args.output_dir = os.path.join(args.output_dir, f"fog_alpha_{args.fog_alpha if not args.random_alpha else 'random'}", args.postfix)
         #args.output_dir = args.output_dir.replace("fog", f"fog_alpha_{args.fog_alpha}")
         os.makedirs(args.output_dir, exist_ok=True)
         fog_params = {
@@ -525,7 +533,7 @@ if __name__ == "__main__":
             ),
 
         }
-        fog_results = simulate_fog(args, fog_params = fog_params, max_samples=None, save=args.save, show_pbar=True)
+        fog_results = simulate_fog(args, fog_params = fog_params, max_samples=None, save=args.save, show_pbar=True, random_alpha=args.random_alpha)
         # print("Number of fog simulated results: ", len(fog_results))
         # fog_alpha = args.fog_alpha
         # print(f"Fog simulation with alpha = {fog_alpha}")
@@ -562,7 +570,7 @@ if __name__ == "__main__":
 
     #%% Simulate Rain
     if args.fault == "rain" or args.fault == "all":
-        args.output_dir = os.path.join(args.output_dir, f"{args.fault}", f"rain_rate_{args.rain_rate}")
+        args.output_dir = os.path.join(args.output_dir, f"rain_rate_{args.rain_rate}", args.postfix)
         os.makedirs(args.output_dir, exist_ok=True)
         rain_results = simulate_rain_new(args, max_samples=None, save=args.save)
         print("Number of rain simulated results: ", len(rain_results))

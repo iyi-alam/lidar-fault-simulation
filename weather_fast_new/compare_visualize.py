@@ -5,10 +5,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from weather_sim import visualization_utils
 import numpy as np
 
-main_folder = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval"
-sim_folder = "/home/saksham/samsad/mtech-project/datasets/nuscenes_part1/v1.0-trainval-sim/rain_500"
-plot_save_dir = "/home/saksham/samsad/mtech-project/fault-sim/weather_fast_new/plots"
-os.makedirs(plot_save_dir, exist_ok=True)
+main_folder = "/data/home/samsadalam/mtech_project/datasets/v1.0-trainval"
+sim_folder = "/data/home/samsadalam/mtech_project/datasets/v1.0-trainval-sim/rain_50"
+plot_save_dir = "/data/home/samsadalam/mtech_project/lidar-fault-simulation/weather_fast/plots"
 
 main_samples = os.path.join(main_folder, "samples/LIDAR_TOP")
 sim_samples = os.path.join(sim_folder, "samples/LIDAR_TOP")
@@ -27,4 +26,4 @@ for i, sample_file in enumerate(os.listdir(sim_samples)):
     print(f"Sample Index: {i+1} | Drop count: {label0_count_sim/total_count_sim*100:.2f}% | Scatter count: {label1_count_sim/total_count_sim*100:.2f}%")
     visualization_utils.plot_bev(main_pc, sim_pc, save_dir=plot_save_dir, 
                                  save_name=sample_file.replace(".bin", ".png"), save=True,
-                                 xlim=60, ylim=60, special_label= 1)
+                                 xlim=60, ylim=60)
