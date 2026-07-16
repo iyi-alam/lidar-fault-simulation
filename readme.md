@@ -2,25 +2,7 @@
 
 A collection of **LiDAR point cloud corruption / fault simulation utilities** for generating degraded LiDAR data under sensor faults and adverse conditions. The goal of this repository is to help you **stress-test perception pipelines** (detection, tracking, mapping, segmentation) by injecting realistic and controllable failure modes into point clouds.
 
-This repo is organized as a set of standalone simulators/scripts (rather than a packaged Python library). Many components are designed to work with **nuScenes** via `nuscenes-devkit`.
-
----
-
-## Features (high-level)
-
-This repository includes multiple fault families (directory names reflect the focus area):
-
-- **Weather / atmospheric effects**: fog/rain/snow/dust simulation
-- **Noise injection**:
-  - *Scene-level* noise corruption (affects the full point cloud)
-  - *Object-level* noise corruption (affects points associated with objects)
-- **Other fault modules** (present as directories; see structure below):
-  - Cross-talk simulation
-  - Density simulation
-  - Object failure / transforms
-  - Noise corruption suites
-
-> Note: Each module may have its own assumptions about input format (nuScenes sweeps vs general point cloud arrays) and output artifacts. See module READMEs/scripts for exact details.
+This repo is organized as a set of standalone simulators/scripts. Many components are designed to work with **nuScenes** via `nuscenes-devkit`.
 
 ---
 
@@ -188,9 +170,4 @@ Issues and pull requests are welcome. If you submit a PR, please include:
 
 ---
 
-## License
-
-No license file is currently present in the repository root. If you intend others to use/modify/distribute this code, add a `LICENSE` file (e.g., MIT, Apache-2.0, BSD-3-Clause) and mention it here.
-
----
 
